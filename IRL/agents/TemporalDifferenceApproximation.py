@@ -115,7 +115,7 @@ class nStepSemiGradientTDPrediction:
       self.w += self.alpha*(G - self.getValue(state)) * self.afd(self.w, state, **self.af_kwargs)     
 
   def updateBuffer(self, episode):
-    self.bufferExperience = episode
+    self.bufferExperience.extend(episode)
     while(len(self.bufferExperience)>(self.n+1)):
       self.bufferExperience.pop(0)
       

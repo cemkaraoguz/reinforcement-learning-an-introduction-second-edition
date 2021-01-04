@@ -13,28 +13,36 @@ from IRL.agents.TemporalDifferenceApproximation import nStepSemiGradientTDPredic
 from IRL.utils.FeatureTransformations import stateAggregation
 from IRL.utils.ApproximationFunctions import linearTransform, dLinearTransform
 
-def runExperiment(nEpisodes, env, agent):
+def generateTrajectories(nEpisodes, env):
+  trajectories_all = []
   for e in range(nEpisodes):
-    experiences = [{}]
     done = False
     state = env.reset()
-    while not done:     
-      experiences[-1]['state'] = state
-      experiences[-1]['done'] = done
-
+    trajectories = [{}]
+    while not done:
+      
+      trajectories[-1]['state']= state
+      trajectories[-1]['done']= done
+      
       new_state, reward, done = env.step()
       
-      xp = {}
-      xp['reward'] = reward
-      xp['state'] = new_state
-      xp['done'] = done
-      experiences.append(xp)
-
-      agent.update(experiences)
+      experience = {}
+      experience['state'] = new_state
+      experience['reward'] = reward
+      experience['done'] = done
+      trajectories.append(experience)
       
       state = new_state
+      
+    trajectories_all.append(trajectories)
+    
+  return trajectories_all
 
-  estimatedValues = [agent.getValue(state) for state in range(env.nStates)]
+def runExperiment(trajectories, agent, nStates):
+  for e, trajectory in enumerate(trajectories):
+    for t in range(len(trajectory)-1):
+      agent.update(trajectory[t:t+2])
+  estimatedValues = [agent.getValue(state) for state in range(nStates)]
   return np.array(estimatedValues)
   
 if __name__=="__main__":  
@@ -47,11 +55,10 @@ if __name__=="__main__":
   groundTruth = np.zeros(nStatesOneSide*2+1)
   groundTruth[nStatesOneSide:] = np.arange(nStatesOneSide+1)/nStatesOneSide
   groundTruth[0:nStatesOneSide] = np.arange(nStatesOneSide,0,-1)/(-nStatesOneSide)
-  groundTruth = groundTruth[1:nStatesOneSide*2]
   nStates = nStatesOneSide*2+1
   
   # Agents
-  alphas = np.arange(0.01, 1.01, 0.19)
+  alphas = np.arange(0.0, 1.01, 0.2)
   nVals = [2**n for n in range(10)]
   gamma = 1.0
   nParams = 10
@@ -59,6 +66,12 @@ if __name__=="__main__":
     'ftf':stateAggregation, 'nStates':nStates, 'nParams':nParams}
   
   env = RandomWalk(nStatesOneSide, specialRewards=specialRewards) 
+
+  trajectories = []
+  for i in range(nExperiments):
+    print("Generating trajectories...", round(i/nExperiments*100),"%")
+    trajectories.append( generateTrajectories(nEpisodes, env) )
+  print("Generating trajectories...done!")
   
   avg_vals_all = []
   avg_rmse_TDn_all = []
@@ -72,8 +85,8 @@ if __name__=="__main__":
         
         agent_TDn = nStepSemiGradientTDPrediction(nParams, alpha, gamma, n, approximationFunctionArgs=approximationFunctionArgs_TD)
         
-        estimatedValues_TDn = runExperiment(nEpisodes, env, agent_TDn)
-        rmse_TDn = np.sqrt(np.mean( (groundTruth - estimatedValues_TDn[1:env.nStates-1])**2 ) )
+        estimatedValues_TDn = runExperiment(trajectories[idx_experiment], agent_TDn, env.nStates)
+        rmse_TDn = np.sqrt(np.mean( (groundTruth - estimatedValues_TDn)**2 ) )
         avg_vals_TDn = avg_vals_TDn + (1.0/(idx_experiment+1))*(estimatedValues_TDn - avg_vals_TDn)
         avg_rmse_TDn = avg_rmse_TDn + (1.0/(idx_experiment+1))*(rmse_TDn - avg_rmse_TDn)
         
@@ -86,7 +99,7 @@ if __name__=="__main__":
   for i, n in enumerate(nVals):
     ax.plot(avg_rmse_TDn_all[i*len(alphas):i*len(alphas)+len(alphas)], label=str(n)+" step TD")
   ax.set_xlabel("alpha")
-  ax.set_ylabel("Average RMS Error")
+  ax.set_ylabel("Average RMS Error over "+ str(env.nStates)+" states and first "+str(nEpisodes)+" episodes for "+str(nExperiments)+" runs")
   ax.set_xticks(range(len(alphas)))
   ax.set_xticklabels([str(np.round(i,1)) for i in alphas])
   pl.legend()

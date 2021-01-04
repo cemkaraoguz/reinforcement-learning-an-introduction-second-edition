@@ -10,12 +10,11 @@ import pylab as pl
 
 from IRL.environments.ToyExamples import RandomWalk
 from IRL.agents.MonteCarloApproximation import GradientMonteCarloPrediction
-from IRL.agents.TemporalDifferenceApproximation import SemiGradientTDPrediction
 from IRL.utils.FeatureTransformations import stateAggregation
 from IRL.utils.ApproximationFunctions import linearTransform, dLinearTransform
 
 if __name__=="__main__":  
-  nEpisodes = 40000
+  nEpisodes = 10000
   
   # Environment
   nStatesOneSide = 250
@@ -32,17 +31,10 @@ if __name__=="__main__":
   nParams_MC = 10
   approximationFunctionArgs_MC = {'af':linearTransform, 'afd':dLinearTransform, 
     'ftf':stateAggregation, 'nStates':nStates, 'nParams':nParams_MC}  
-  alpha_TD = 1e-4
-  gamma_TD = 1.0
-  nParams_TD = 10
-  approximationFunctionArgs_TD = {'af':linearTransform, 'afd':dLinearTransform, 
-    'ftf':stateAggregation, 'nStates':nStates, 'nParams':nParams_TD}
   
   env = RandomWalk(nStatesOneSide, specialRewards=specialRewards)
-
   agent_MC = GradientMonteCarloPrediction(env.nStates, nParams_MC, alpha_MC, gamma_MC, approximationFunctionArgs=approximationFunctionArgs_MC)
-  agent_TD = SemiGradientTDPrediction(nParams_TD, alpha_TD, gamma_TD, approximationFunctionArgs=approximationFunctionArgs_TD)
-
+  
   for e in range(nEpisodes):
     
     if e%100==0:
@@ -65,24 +57,19 @@ if __name__=="__main__":
       xp['state'] = new_state
       xp['done'] = done
       experiences.append(xp)
-
-      agent_TD.update(experiences)
       
       state = new_state
       
     agent_MC.update(experiences)
   
   estimatedValues_MC = [agent_MC.getValue(state) for state in range(env.nStates-1)]
-  estimatedValues_TD = [agent_TD.getValue(state) for state in range(env.nStates-1)]
 
   pl.figure()
   pl.plot(groundTruth, 'k', label="Real values")
   pl.plot(estimatedValues_MC, label=agent_MC.getName())
-  pl.plot(estimatedValues_TD, label=agent_TD.getName())
   pl.xlabel("State")
   pl.ylabel("Value")
   pl.legend()
-  pl.show()
   
   mu = agent_MC.getMu()
   pl.figure()
