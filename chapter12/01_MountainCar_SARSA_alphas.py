@@ -73,8 +73,8 @@ if __name__=="__main__":
   startPositionBounds = [-0.6, -0.4]
   
   # Agent
-  alphas = [0.4/8, 0.6/8, 0.8/8, 1.0/8, 1.2/8, 1.4/8]
-  lambdaVals = [0.0, 0.4, 0.8, 0.9, 0.975, 0.99]
+  alphas = [0.2/8, 0.5/8, 0.8/8, 1.1/8, 1.4/8, 1.8/8]
+  lambdaVals = [0.0, 0.68, 0.84, 0.92, 0.96, 0.98, 0.99]
   gamma = 1.0
   epsilon = 0.0
   nActions = 3
