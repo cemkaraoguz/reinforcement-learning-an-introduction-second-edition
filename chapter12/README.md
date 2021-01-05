@@ -7,4 +7,8 @@ Figure 12.6<br>
 Figure 12.8<br>
 <img src="figures/Figure_12_8.png" width=500><br>
 
+Figure 12.10<br>
+<img src="figures/Figure_12_10.png" width=500><br>
 
+Figure 12.11<br>
+<img src="figures/Figure_12_11.png" width=500><br>
