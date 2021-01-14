@@ -20,7 +20,7 @@ class KArmedBandit:
     return np.random.normal(self.rewardMeans[action], self.rewardDist_std)
     
   def addGaussianNoiseToRewards(self, noise_mean, noise_std):
-    self.rewards = self.rewardMeans + np.random.normal(noise_mean, noise_std, self.nActions) 
+    self.rewardMeans = self.rewardMeans + np.random.normal(noise_mean, noise_std, self.nActions) 
     
   def reset(self):
     self.rewardMeans = np.random.normal(self.rewardDist_mean, self.rewardDist_std, self.nActions)
