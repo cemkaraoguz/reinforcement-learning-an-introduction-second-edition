@@ -13,6 +13,8 @@ from IRL.agents.DynamicProgramming import ValueIteration
 
 if __name__=="__main__":
 
+  doSaveActionValueTable = False
+
   # Environment
   sizeX = 4
   sizeY = 4
@@ -45,3 +47,8 @@ if __name__=="__main__":
     print("Stable policy achieved!")
     
   env.printEnv(agent)
+  
+  # Save for exercise 08_GridWorld_2_TDn_OffPolicy.py
+  if doSaveActionValueTable:
+    with open('gridworld_2_qtable.npy', 'wb') as f:
+      np.save(f, agent.policy.actionValueTable)

@@ -11,7 +11,7 @@ import pylab as pl
 from IRL.environments.Gridworlds import DeterministicGridWorld
 from IRL.agents.DynamicProgramming import PolicyEvaluation
 from IRL.utils.Policies import StochasticPolicy
-from IRL.agents.TemporalDifferenceLearning import nStepTDPrediction, nStepOffPolicyTDPrediction, nStepPerDecisionTDPrediction
+from IRL.agents.TemporalDifferenceLearning import nStepOffPolicyTDPrediction, nStepPerDecisionTDPrediction
 
 def runExperiment(nEpisodes, env, agent, valueTable_ref, policy_behaviour=None):
   rms = np.zeros(nEpisodes)
@@ -52,10 +52,7 @@ def runExperiment(nEpisodes, env, agent, valueTable_ref, policy_behaviour=None):
       if(policy_behaviour is None):
         agent.evaluate(experiences[-2:])
       else:
-        if(agent.name=="n-step TD Prediction"):
-          agent.evaluate(experiences[-2:])
-        else:
-          agent.evaluate(experiences[-2:], policy_behaviour)
+        agent.evaluate(experiences[-2:], policy_behaviour)
     
       state = new_state
       action = new_action
@@ -66,7 +63,7 @@ def runExperiment(nEpisodes, env, agent, valueTable_ref, policy_behaviour=None):
 if __name__=="__main__":
 
   nExperiments = 100
-  nEpisodes = 400
+  nEpisodes = 100
 
   # Environment
   sizeX = 4
@@ -75,15 +72,24 @@ if __name__=="__main__":
   terminalStates= [(0,0), (3,3)]
   
   # Agent
-  gamma = 1.0
+  gamma = 0.9
   thresh_convergence = 1e-30
   n = 5
-  alpha_TDn = 0.01
-  alpha_TDnOP = 0.01
-  alpha_TDnPD = 0.01
-  
+  alpha_TDnOP = 0.001
+  alpha_TDnPD = 0.001
+ 
   env = DeterministicGridWorld(sizeX, sizeY, defaultReward=defaultReward, terminalStates=terminalStates)
-  policy = StochasticPolicy(env.nStates, env.nActions)
+  # Behaviour policy is a simple stochastic policy with equiprobable actions
+  behaviour_policy = StochasticPolicy(env.nStates, env.nActions)
+  # Load target policy q table
+  # We will use the optimal policy learned via VI as target policy
+  # These are the values learned in chapter04/03_GridWorld_2_VI.py
+  with open('gridworld_2_qtable.npy', 'rb') as f:
+    targetPolicy_qTable = np.load(f)  
+  target_policy = StochasticPolicy(env.nStates, env.nActions)
+  for s in range(env.nStates):
+    target_policy.update(s, targetPolicy_qTable[s,:])
+  # A policy evaluation agent will provide the ground truth
   agent_PE = PolicyEvaluation(env.nStates, env.nActions, gamma, thresh_convergence, env.computeExpectedValue)
   
   env.printEnv()
@@ -91,7 +97,7 @@ if __name__=="__main__":
   # Policy evaluation for reference
   for e in range(nEpisodes):
       
-    deltaMax, isConverged = agent_PE.evaluate(policy)
+    deltaMax, isConverged = agent_PE.evaluate(target_policy)
     
     #print("Episode : ", e, " Delta: ", deltaMax)
     
@@ -107,35 +113,29 @@ if __name__=="__main__":
       print("Convergence achieved!")
       break
   
-  avg_rms_tdn = np.zeros(nEpisodes)
   avg_rms_tdnop = np.zeros(nEpisodes)
   avg_rms_tdnpd = np.zeros(nEpisodes)
   for idx_experiment in range(1, nExperiments+1):
   
     print("Experiment : ", idx_experiment)
 
-    agent_TDn = nStepTDPrediction(env.nStates, alpha_TDn, gamma, n)
     agent_TDnOP = nStepOffPolicyTDPrediction(env.nStates, env.nActions, alpha_TDnOP, gamma, n)
+    agent_TDnOP.policy = target_policy
     agent_TDnPD = nStepPerDecisionTDPrediction(env.nStates, env.nActions, alpha_TDnPD, gamma, n)
-
-    rms_tdn = runExperiment(nEpisodes, env, agent_TDn, agent_PE.valueTable, policy)
-    rms_tdnop = runExperiment(nEpisodes, env, agent_TDnOP, agent_PE.valueTable, policy)
-    rms_tdnpd = runExperiment(nEpisodes, env, agent_TDnPD, agent_PE.valueTable, policy)
-
-    avg_rms_tdn = avg_rms_tdn + (1.0/idx_experiment)*(rms_tdn - avg_rms_tdn)
+    agent_TDnPD.policy = target_policy
+    rms_tdnop = runExperiment(nEpisodes, env, agent_TDnOP, agent_PE.valueTable, behaviour_policy)
+    rms_tdnpd = runExperiment(nEpisodes, env, agent_TDnPD, agent_PE.valueTable, behaviour_policy)
     avg_rms_tdnop = avg_rms_tdnop + (1.0/idx_experiment)*(rms_tdnop - avg_rms_tdnop)
     avg_rms_tdnpd = avg_rms_tdnpd + (1.0/idx_experiment)*(rms_tdnpd - avg_rms_tdnpd)
   
   pl.figure()
   pl.plot(agent_PE.valueTable, '-r', label="Policy Evaluation")
-  pl.plot(agent_TDn.valueTable, '-g', label=str(n) + " step TD prediction")
   pl.plot(agent_TDnOP.valueTable, '-b', label=str(n) + " step Off-policy TD prediction")
   pl.plot(agent_TDnPD.valueTable, '-k', label=str(n) + " step Per-decision TD prediction")
   pl.xlabel("States")
   pl.ylabel("Values")
   pl.legend()
   pl.figure()
-  pl.plot(avg_rms_tdn, '-g', label=str(n) + " step TD prediction")
   pl.plot(avg_rms_tdnop, '-b', label=str(n) + " step Off-policy TD prediction")
   pl.plot(avg_rms_tdnpd, '-k', label=str(n) + " step Per-decision TD prediction")
   pl.xlabel("Episodes")
