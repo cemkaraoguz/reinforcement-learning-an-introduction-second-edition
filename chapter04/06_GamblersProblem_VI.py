@@ -1,5 +1,6 @@
 '''
-05_GamblersProblem_PI.py : replication of Figure 4.3 via Value Iteration
+05_GamblersProblem_PI.py : replication of Figure 4.3 via Value Iteration and
+solution to exercise 4.9
 
 Cem Karaoguz, 2020
 MIT License
@@ -15,8 +16,10 @@ if __name__=="__main__":
 
   # Environment
   maxCapital = 100
-  prob_heads = 0.4
-  visualizationSweeps = [1, 2, 3, 32]
+  # Figure 4.3 --> prob_heads = 0.4
+  # Exercise 4.9 --> prob_heads = 0.25 and prob_heads = 0.55
+  prob_heads = 0.25
+  visualizationSweeps = [1, 2, 3, 32, 100, 1000, 3000]
   
   # Agent
   gamma = 1.0
@@ -24,7 +27,7 @@ if __name__=="__main__":
 
   env = CoinFlipGame(maxCapital, prob_heads)
   agent = ValueIteration(env.nStates, env.nActions, gamma, thresh_convergence,
-    env.computeExpectedValue, env.actionsAllowed, iterationsMax=1000, doLogValueTables=True)
+    env.computeExpectedValue, env.actionsAllowed, iterationsMax=5000, doLogValueTables=True)
     
   #env.printEnv()
   
@@ -47,6 +50,7 @@ if __name__=="__main__":
     pl.plot(printMatrix_val, label="Sweep "+str(e))
   pl.xlabel("Capital")
   pl.ylabel("Value estimates")
+  pl.title("p="+str(prob_heads))
   pl.legend()
 
   printMatrix_pol = np.zeros(env.nStates-2, dtype=np.int)
@@ -64,4 +68,5 @@ if __name__=="__main__":
   pl.plot(printMatrix_pol)
   pl.xlabel("Capital")
   pl.ylabel("Final policy (stake)")
+  pl.title("p="+str(prob_heads))
   pl.show()
